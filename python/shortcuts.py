@@ -2,8 +2,8 @@ import pythoncom, pyHook
 import json
 import os 
 
-class Shortcut(object):
-	"""docstring for shortcut"""
+class Shortcut(object):  
+	APP_WHITE_LIST = json.load(open("whitelist.json", "r"))
 	def __init__(self, saveDir): 
 		self.shortcutPrefix = ('Lcontrol', 'Rcontrol', 'Lshift', 'Rshift', 'Lmenu', 'Rmenu')
 		self.app = ''
@@ -11,16 +11,22 @@ class Shortcut(object):
 		self.shortcutDict = {}
 		self.saveDir = saveDir
 		self.loadAll()
+		print self.APP_WHITE_LIST
 
 	def loadAll(self):
 		[ self.shortcutDict.update({f.split(".json")[0]: json.load(open(os.path.join(self.saveDir,f)))}) for f in os.listdir(self.saveDir) ]
-		print self.shortcutDict
+		return True
 
 
-	def OnKeyboardEvent(self, event): 
+	def OnKeyboardEvent(self, event):
 		windowName = event.WindowName.split(" - ")[-1]
+		if windowName not in self.APP_WHITE_LIST:
+			print windowName
+			return True 
+
+
 		if self.app == '' or self.app != None and self.app != windowName:
-			self.shortcut = []
+			self.reset()
 			self.app = windowName
 
 		key = event.Key
@@ -38,21 +44,28 @@ class Shortcut(object):
 		return True
 
 	def save(self):  
-		if self.app not in self.shortcutDict:
-			self.shortcutDict[self.app] = {}
+		if ('Lshift' in self.shortcut or 'Rshift' in self.shortcut) and len(self.shortcut)==2:
+			self.reset()	
+		 	return True 
 
-		shortcutString = " + ".join(self.shortcut)
+		if self.app not in self.shortcutDict:
+			self.shortcutDict[self.app] = {} 
+
+		shortcutString = " + ".join(self.shortcut) 
 		if shortcutString in self.shortcutDict:
-			return True
+			return True 
 
 		self.shortcutDict[self.app][shortcutString] = self.shortcut
 		file_path = os.path.join(self.saveDir, self.app + ".json")   
 		json.dump(self.shortcutDict[self.app], open(file_path, 'w+'))
+		self.reset()
+		return True
+
+	def reset(self):
 		self.shortcut = []
 		return True
 
-
-	def printEvent(self, event):
+	def printEvent(self, event): 
 		print('MessageName:', event.MessageName) 
 		print('Message:',event.Message)
 		print('Time:', event.Time)
