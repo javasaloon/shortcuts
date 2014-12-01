@@ -3,26 +3,29 @@ import json
 import os 
 from eventHelper import printEvent
 from shortcut import Shortcut
+from show import ept
 
 class Main(object):  
-	APP_WHITE_LIST = json.load(open("whitelist.json"))
+	with open("whitelist.json") as f: 
+		APP_WHITE_LIST = json.load(f)
+
 	def __init__(self, saveDir): 
-		self.shortcutPrefix = json.load(open("prefix.json"))
+		with open("prefix.json") as f:
+			self.shortcutPrefix = json.load(f) 
 		self.app = ''
 		self.keys = []
-		self.appShortcuts = {}
-		self.saveDir = saveDir
-		self.loadAll() 
-
-	def loadAll(self):
-		[ self.appShortcuts.update({f.split(".json")[0]: json.load(open(os.path.join(self.saveDir,f)))}) \
-			for f in os.listdir(self.saveDir) ]
-		return True 
+		self.saveDir = saveDir 
+		self.appShortcuts = { f.split(".json")[0]: self.getJson(f) for f in os.listdir(self.saveDir) }  
+		self.ept = ept("ept")
+		 
+	def getJson(self, fileName):
+		with open(os.path.join(self.saveDir, fileName)) as f:
+			return json.load(f) 
 
 	def OnKeyboardEvent(self, event):
 		windowName = event.WindowName.split(" - ")[-1]
 		if windowName not in self.APP_WHITE_LIST:
-			print windowName
+			print unicode(windowName)
 			return True  
 
 		if self.app == '' or self.app != None and self.app != windowName:
@@ -40,7 +43,6 @@ class Main(object):
 
 		self.keys.append(key) 
 		self.save() 
-		#printEvent(event)
 		return True
 
 	def save(self):  
@@ -54,12 +56,14 @@ class Main(object):
 		shortcutName = " + ".join(self.keys) 
 		if shortcutName in self.appShortcuts[self.app]:
 			shortcut = self.appShortcuts[self.app][shortcutName]
-			shortcut["count"] = shortcut["count"] + 1 
+			shortcut["count"] += 1 
 		else:   
 			self.appShortcuts[self.app][shortcutName] = {"keys": self.keys, "count": 1, "ignore": False}
  
 		file_path = os.path.join(self.saveDir, self.app + ".json") 
-		json.dump(self.appShortcuts[self.app], open(file_path, 'w+'))
+		with open(file_path, 'w') as f:
+			json.dump(self.appShortcuts[self.app], f)
+		
 		self.reset()
 		return True 
   
